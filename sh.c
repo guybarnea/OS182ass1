@@ -12,6 +12,9 @@
 #define BACK  5
 
 #define MAXARGS 10
+#define MAX_HISTORY 16
+
+char history[MAX_HISTORY][128] = {0};
 
 struct cmd {
   int type;
@@ -141,6 +144,20 @@ getcmd(char *buf, int nbuf)
   return 0;
 }
 
+void toHistory(char *buf){
+	int i;
+	for(i=MAX_HISTORY-2; i>=0; i--)
+		strcpy(history[i+1], history[i]);
+	strcpy(history[0], buf);
+}
+
+void showHistory(){
+	int i;
+	for(i=0; i<MAX_HISTORY && strcmp(history[i], "")!=0; i++){
+		printf(1, "%d - %s", i, history[i]);
+	}
+}
+
 int
 main(void)
 {
@@ -157,6 +174,17 @@ main(void)
 
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
+  	if (strncmp(buf, "histroy -l", 10) && (strlen(buf)==13 || strlen(buf)==14)){
+  		int index = atoi(buf+11);
+  		if (index>=0 && index<16){
+  			strcpy(buf, history[index]);
+  		}
+  	}
+  	if (strcmp(buf, "history\n")==0){
+    	showHistory();
+    	continue;
+    }
+  	if (strcmp(buf, "\n")!=0) toHistory(buf);
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
       // Chdir must be called by the parent, not the child.
       buf[strlen(buf)-1] = 0;  // chop \n
