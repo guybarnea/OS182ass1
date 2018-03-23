@@ -88,6 +88,9 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->ctime = ticks;
+  p->iotime = 0;
+  p->rtime = 0;
 
   release(&ptable.lock);
 
@@ -263,6 +266,7 @@ exit(void)
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
+  curproc->etime = ticks;
   sched();
   panic("zombie exit");
 }
@@ -287,6 +291,49 @@ wait(void)
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        freevm(p->pgdir);
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        p->state = UNUSED;
+        release(&ptable.lock);
+        return pid;
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if(!havekids || curproc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(curproc, &ptable.lock);  //DOC: wait-sleep
+  }
+}
+
+int wait2(int pid, int* wtime, int* rtime, int* iotime){
+  struct proc *p;
+  int havekids;
+  struct proc *curproc = myproc();
+  
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for exited children.
+    havekids = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->pid != pid)
+        continue;
+      havekids = 1;
+      if(p->state == ZOMBIE){
+        // Found one.
+        *rtime = p->rtime;
+        *iotime = p->iotime;
+        *wtime = p->etime - p->ctime - p->iotime - p->rtime;
+        //pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
@@ -531,4 +578,26 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+// Updates each process's times every tick
+// Called from trap.c, after tick
+void ticked(void){
+  struct proc *p;
+  acquire(&ptable.lock);
+
+  for(p=ptable.proc; p<&ptable.proc[NPROC]; p++){
+    switch(p->state){
+      case RUNNING:
+        p->rtime++;
+        break;
+      case SLEEPING:
+        p->iotime++;
+        break;
+      default:
+        break;
+    }
+  }
+
+  release(&ptable.lock);
 }
