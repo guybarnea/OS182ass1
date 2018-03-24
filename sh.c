@@ -78,8 +78,6 @@ runcmd(struct cmd *cmd)
   default:
     panic("runcmd");
 
-          printf(1, "%s\n","before runcmd EXEC case");
-
   case EXEC:
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
@@ -287,10 +285,10 @@ main(void)
         printf(2, "cannot cd %s\n", buf+3);
       continue;
     }
-
-    if(fork1() == 0){
-      runcmd(parsecmd(buf));
-    }
+	  
+    int pid = fork1(); 	
+    if(pid == 0)
+    	runcmd(parsecmd(buf));
 
     wait();
   }
