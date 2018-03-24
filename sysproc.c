@@ -33,6 +33,17 @@ sys_wait(void)
   return wait();
 }
 
+int sys_wait2(void){
+  int pid;
+  int* wtime;
+  int* rtime;
+  int* iotime;
+
+  if (argint(0, &pid)<0 || argptr(1, (void *)&wtime, sizeof(int*))<0 || argptr(2, (void *)&rtime, sizeof(int*))<0 || argptr(3, (void *)&iotime, sizeof(int*))<0)
+    return -1;
+  return wait2(pid, wtime, rtime, iotime);
+}
+
 int
 sys_kill(void)
 {
