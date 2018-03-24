@@ -20,6 +20,7 @@ void            bwrite(struct buf*);
 void            consoleinit(void);
 void            cprintf(char*, ...);
 void            consoleintr(int(*)(void));
+int             history(char* buffer, int historyId);
 void            panic(char*) __attribute__((noreturn));
 
 // exec.c
@@ -118,10 +119,13 @@ void            setproc(struct proc*);
 void            sleep(void*, struct spinlock*);
 void            userinit(void);
 int             wait(void);
-int 			wait2(int pid, int* wtime, int* rtime, int* iotime);
 void            wakeup(void*);
+int 			setVariable(char* variable, char* value);
+int 			getVariable(char* variable, char* value);
+int 			remVariable(char* variable);
 void            yield(void);
-void			ticked(void);
+
+
 
 // swtch.S
 void            swtch(struct context**, struct context*);
