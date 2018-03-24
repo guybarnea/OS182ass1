@@ -118,10 +118,13 @@ void            setproc(struct proc*);
 void            sleep(void*, struct spinlock*);
 void            userinit(void);
 int             wait(void);
-int 			wait2(int pid, int* wtime, int* rtime, int* iotime);
+int 			      wait2(int pid, int* wtime, int* rtime, int* iotime);
+int 			      setVariable(char* variable, char* value);
+int 			      getVariable(char* variable, char* value);
+int 			      remVariable(char* variable);
 void            wakeup(void*);
 void            yield(void);
-void			ticked(void);
+void			      ticked(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
