@@ -111,9 +111,9 @@ memmove(void *vdst, void *vsrc, int n)
     *dst++ = *src++;
   return vdst;
 }
-
+//add this 
 char*
-strncpy(char *s, const char *t, int n)
+strncpy(char *s, const char *t, int n) 
 {
   char *os;
   
