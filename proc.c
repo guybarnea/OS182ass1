@@ -653,19 +653,16 @@ int remVariable(char* variable){
   acquire(&ptable.lock);
   for(int i=0; i<MAX_VARIABLES; i++){
     if(strncmp(variables[i],variable,32)==0){
-      cprintf("variables[i] = %s\n",variables[i]);
       for(int j=MAX_VARIABLES-1; j > i; j--){
         safestrcpy(variables[j-1],variables[j],128);
         
       }
 
-      cprintf("variables[i] = %s\n",variables[i]);
       release(&ptable.lock);
       return 0;
     }
 
   }
-  cprintf("var not found");
   release(&ptable.lock);
   return -1;
 }
