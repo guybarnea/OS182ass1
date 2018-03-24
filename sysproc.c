@@ -126,9 +126,9 @@ int sys_getVariable(void){
 }
 
 int sys_remVariable(void){
-    char* value;
-    if(argptr(0, &value, 128) < 0)
+    char* variable;
+    if(argptr(0, &variable, 32) < 0)
       return -1;
-    return remVariable(value);
+    return remVariable(variable);
 }
 

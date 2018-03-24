@@ -605,13 +605,16 @@ void ticked(void){
 }
 
 int setVariable(char* variable, char* value){
+  acquire(&ptable.lock);
   for(int i=0; i<strlen(variable); i++){
     if(variable[i] < 65 || variable[i] > 122){
+      release(&ptable.lock);
       return -2;
     }
   }
 
   if(strlen(variable) > 32 || strlen(value) > 128){
+    release(&ptable.lock);
     return -2;
   }
 
@@ -619,31 +622,52 @@ int setVariable(char* variable, char* value){
     if(strncmp(variables[i], "",1)==0){
       safestrcpy(variables[i],variable,33);
       safestrcpy(values[i],value,128);
+      release(&ptable.lock);
       return 0;
     }
     if(strncmp(variables[i], variable,32)==0){
-      safestrcpy(values[i],value,129);   
+      safestrcpy(values[i],value,129);
+      release(&ptable.lock);  
       return 0;
     }
   }
+  release(&ptable.lock);
   return -1;
 }
 
 int getVariable(char* variable, char* value){
+  acquire(&ptable.lock);
   for(int i=0; i<MAX_VARIABLES; i++){
       if((strncmp(variables[i], variable,strlen(variable))==0)){
          safestrcpy(value,values[i],128);
+         release(&ptable.lock);
          return 0;
     }
   }
-
+  release(&ptable.lock);
   return -1;
 }
 
 
 int remVariable(char* variable){
-  cprintf("%s\n", variable);
-  return 1;
+  acquire(&ptable.lock);
+  for(int i=0; i<MAX_VARIABLES; i++){
+    if(strncmp(variables[i],variable,32)==0){
+      cprintf("variables[i] = %s\n",variables[i]);
+      for(int j=MAX_VARIABLES-1; j > i; j--){
+        safestrcpy(variables[j-1],variables[j],128);
+        
+      }
+
+      cprintf("variables[i] = %s\n",variables[i]);
+      release(&ptable.lock);
+      return 0;
+    }
+
+  }
+  cprintf("var not found");
+  release(&ptable.lock);
+  return -1;
 }
 
 
