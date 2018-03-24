@@ -33,17 +33,6 @@ sys_wait(void)
   return wait();
 }
 
-int sys_wait2(void){
-  int pid;
-  int* wtime;
-  int* rtime;
-  int* iotime;
-
-  if (argint(0, &pid)<0 || argptr(1, (void *)&wtime, sizeof(int*))<0 || argptr(2, (void *)&rtime, sizeof(int*))<0 || argptr(3, (void *)&iotime, sizeof(int*))<0)
-    return -1;
-  return wait2(pid, wtime, rtime, iotime);
-}
-
 int
 sys_kill(void)
 {
@@ -107,3 +96,28 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int sys_setVariable(void){
+  char* value;
+  char* variable;
+
+  if(argptr(0, &variable, 32) < 0 || argptr(1, &value, 128) < 0)
+    return -1;
+  return setVariable(variable,value);
+}
+
+int sys_getVariable(void){
+  char* variable;
+  char* value;
+  if(argptr(0, &variable, 32) < 0 || argptr(1, &value, 128) < 0)
+     return -1;
+  return getVariable(variable,value);
+}
+
+int sys_remVariable(void){
+    char* value;
+    if(argptr(0, &value, 128) < 0)
+      return -1;
+    return remVariable(value);
+}
+

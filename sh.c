@@ -4,6 +4,7 @@
 #include "user.h"
 #include "fcntl.h"
 
+
 // Parsed command representation
 #define EXEC  1
 #define REDIR 2
@@ -13,8 +14,11 @@
 
 #define MAXARGS 10
 #define MAX_HISTORY 16
+#define MAX_VARIABLES 32
 
 char history[MAX_HISTORY][128] = {0};
+int currentHistoryIndex = 0;
+int numOfHistory = 0;
 
 struct cmd {
   int type;
@@ -74,6 +78,8 @@ runcmd(struct cmd *cmd)
   default:
     panic("runcmd");
 
+          printf(1, "%s\n","before runcmd EXEC case");
+
   case EXEC:
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
@@ -81,6 +87,7 @@ runcmd(struct cmd *cmd)
     exec(ecmd->argv[0], ecmd->argv);
     printf(2, "exec %s failed\n", ecmd->argv[0]);
     break;
+
 
   case REDIR:
     rcmd = (struct redircmd*)cmd;
@@ -145,18 +152,68 @@ getcmd(char *buf, int nbuf)
 }
 
 void toHistory(char *buf){
-	int i;
-	for(i=MAX_HISTORY-2; i>=0; i--)
-		strcpy(history[i+1], history[i]);
-	strcpy(history[0], buf);
+  if (strcmp(buf, "\n")!=0){
+    if(numOfHistory < 15){
+  	  strcpy(history[currentHistoryIndex], buf);
+      currentHistoryIndex++;
+      numOfHistory++;
+    }
+    else{
+      for(int i=MAX_HISTORY-2; i>=0; i--)
+      strcpy(history[i+1], history[i]);
+      strcpy(history[0], buf);
+    }
+  }
+
 }
 
 void showHistory(){
 	int i;
 	for(i=0; i<MAX_HISTORY && strcmp(history[i], "")!=0; i++){
-		printf(1, "%d - %s", i, history[i]);
+		printf(1, "%d - %s", i+1, history[i]);
 	}
 }
+
+void replaceGlobalVar(char *buf){
+    char newbuf[1024];
+    memset(newbuf, 0, 1024);
+    int c=0;
+    char variable[32];
+    char value[128];
+    for(int i=0; i<100 ; i++){
+      if(buf[i] == 36){
+        int endOfGlobal = 0;
+         for(int j=i+1; j<100 && !endOfGlobal; j++){
+           if (buf[j] == 32 || buf[j] == 10 || buf[j] == 36){
+                endOfGlobal = 1;
+                strcpy(variable,buf+i+1);
+                variable[j-i-1]=0;
+                int ans = getVariable(variable,value);
+                if(ans == 0){
+                  strncpy(newbuf+c,value,strlen(value));
+                  c=c+strlen(value);
+                  i=j-1;
+
+                }
+                else{
+                  strncpy(newbuf+c,buf+i,1); 
+                  c++;
+                }
+
+                  
+           }
+        }
+      }
+      else{
+        strncpy(newbuf+c,buf+i,1); 
+        c++; 
+      }
+    }
+    newbuf[c-1] = 0;
+    strncpy(buf,newbuf,100);
+
+}
+
 
 int
 main(void)
@@ -174,17 +231,55 @@ main(void)
 
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
-  	if (strncmp(buf, "histroy -l", 10) && (strlen(buf)==13 || strlen(buf)==14)){
-  		int index = atoi(buf+11);
-  		if (index>=0 && index<16){
-  			strcpy(buf, history[index]);
-  		}
-  	}
-  	if (strcmp(buf, "history\n")==0){
-    	showHistory();
-    	continue;
-    }
-  	if (strcmp(buf, "\n")!=0) toHistory(buf);
+
+  toHistory(buf);
+  replaceGlobalVar(buf); 
+
+  if (strncmp(buf, "history -l", 10) == 0 && (strlen(buf)==13 || strlen(buf)==14)){
+        int index = atoi(buf+11);
+
+        if (index>0 && index<16){
+          strcpy(buf, history[index-1]);
+          replaceGlobalVar(buf);
+
+        }
+      }
+
+        if (strcmp(buf, "history\n")==0){
+          showHistory();
+          continue;
+      }
+  
+
+
+
+  int isGlobalVar=0;
+  for(int i=0; i<33 && !isGlobalVar; i++){
+      if(strncmp(buf+i, "=", 1) == 0){
+          isGlobalVar=1;
+          char variable[32];
+          char value[128];
+          strcpy(variable,buf);
+          variable[i] = 0;
+          int k=0;
+          for(int j=i+1; j<100 && buf[j] != 10; j++){
+            value[k] = buf[j];
+            k++;
+          }
+          value[k] = 0;
+          int ans = setVariable(variable,value);
+          if(ans == -2)
+             printf(1,"%s\n", "input is illegal");
+          else if(ans == -1)
+             printf(1,"%s\n", "No room for additional variables");
+        }
+
+      }
+
+      if(isGlobalVar) continue;
+
+
+  	
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
       // Chdir must be called by the parent, not the child.
       buf[strlen(buf)-1] = 0;  // chop \n
@@ -192,11 +287,15 @@ main(void)
         printf(2, "cannot cd %s\n", buf+3);
       continue;
     }
-    int pid = fork1();
-    if(pid == 0)
+
+    if(fork1() == 0){
       runcmd(parsecmd(buf));
-    wait()
+    }
+
+    wait();
   }
+
+
   exit();
 }
 
@@ -367,6 +466,7 @@ parsecmd(char *s)
     panic("syntax");
   }
   nulterminate(cmd);
+
   return cmd;
 }
 

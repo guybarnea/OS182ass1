@@ -5,7 +5,6 @@ struct rtcdate;
 int fork(void);
 int exit(void) __attribute__((noreturn));
 int wait(void);
-int wait2(int pid, int* wtime, int* rtime, int* iotime);
 int pipe(int*);
 int write(int, void*, int);
 int read(int, void*, int);
@@ -25,10 +24,14 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int yield(void);
+int setVariable(char* variable, char* value);
+int getVariable(char* variable, char* value);
+int remVariable(char* variable);
 
 // ulib.c
 int stat(char*, struct stat*);
 char* strcpy(char*, char*);
+char* strncpy(char *s, const char *t, int n);
 void *memmove(void*, void*, int);
 char* strchr(const char*, char c);
 int strcmp(const char*, const char*);
