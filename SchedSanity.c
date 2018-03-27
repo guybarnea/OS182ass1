@@ -1,134 +1,97 @@
 #include "types.h"
 #include "user.h"
-#define NUM_OF_CHILDS 60
-#define MEDIUM_SIZE_LOOP 5
-#define LARGE_SIZE_LOOP 50
+#define NUM_OF_CHILDS 40
+#define MEDIUM_SIZE_LOOP 400
+#define LARGE_SIZE_LOOP 250000
 
-
-int calculation(){
-	int a = 1+2+3+4;
-	return a;
+int 
+gcd ( int a, int b )
+{
+  int c;
+  while ( a != 0 ) {
+     c = a; a = b%a;  b = c;
+  }
+  return b;
 }
 
-void print(){
-	printf(1, "hello world!\n");
+
+
+void small_loop_calculation(){
+	for(int j=0;j<MEDIUM_SIZE_LOOP;++j)
+		gcd(j+1,j+2);
+	
 }
+
+
+
+void large_loop_calculation(){
+	for(int j=0;j<LARGE_SIZE_LOOP;++j)
+		gcd(j+1,j+2);
+	
+}
+
+
+void small_loop_print(){
+	for(int j=0;j<MEDIUM_SIZE_LOOP;++j){
+		printf(1, "hello world!\n");
+	}
+}
+
+void large_loop_print(){
+	for(int j=0;j<MEDIUM_SIZE_LOOP;++j){
+		printf(1, "hello world!\n");
+	}
+}
+
 
 
 int main(int argc, char *argv[])
 {
-	//SchedSanity
+
+
+#ifdef CFSD
+	int cfsd = 1;
+#else
+	int cfsd = 0;
+#endif	
+//SchedSanity
+
+	int pids[NUM_OF_CHILDS];
+
+	for(int i=0; i< NUM_OF_CHILDS; i++){
+		int pid;
+	    pid = fork();
+		if(pid == 0){
+			if(cfsd) set_priority(i);
+			if(i%4 == 0)
+				small_loop_calculation(); //Calculation only - These processes will perform asimple calculation within a medium sized loop
+			if(i%4 == 1)
+				large_loop_calculation(); //Calculation only – These processes will perform simple calculation within a very large loop
+			if(i%4 == 2)
+				small_loop_print();// Calculation + IO – These processes will perform printing to screen within a medium sized loop
+			if(i%4 == 3)
+				large_loop_print(); // Calculation + IO – These processes will perform printing to screen within a very large loop
+				
+			exit();	
+		}
+		else 
+			pids[i] = pid;
+	
+	}
+
+
 	int sum_wtime[4];
 	int sum_rtime[4];
 	int sum_iotime[4];
-	int pids[100];
 	int wtime;
 	int rtime;
 	int iotime;
-	int i,j;
 
-//Calculation only - These processes will perform asimple calculation within a medium sized loop
-	sum_wtime[0] = 0;
-	sum_rtime[0] = 0;
-	sum_iotime[0] = 0;
-	for(i=0; i< NUM_OF_CHILDS; i++){
-		int pid;
-		pid = fork();
-		if(pid == 0){
-			for(j=0;j<MEDIUM_SIZE_LOOP;++j){
-				calculation();
-				}
-		exit();	
-		}
-		else 
-			pids[i] = pid;
-	
-	}
-
-	for(i=0; i< NUM_OF_CHILDS; i++){
+	for(int i=0; i< NUM_OF_CHILDS; i++){
 			wait2(pids[i],&wtime,&rtime,&iotime);
-			sum_wtime[0] += wtime;
-			sum_rtime[0] += rtime;
-			sum_iotime[0] += iotime;
-	   
-	}
-
-
-//Calculation only – These processes will perform simple calculation within a very large loop
-	sum_wtime[1] = 0;
-	sum_rtime[1] = 0;
-	sum_iotime[1] = 0;
-	for(i=0; i< NUM_OF_CHILDS; i++){
-		int pid;
-		pid = fork();
-		if(pid == 0){
-			for(j=0;j<LARGE_SIZE_LOOP;++j){
-				calculation();
-				}
-		exit();
-		}	
-		else 
-			pids[i] = pid;
-	
-	}
-
-	for(i=0; i< NUM_OF_CHILDS; i++){
-			wait2(pids[i],&wtime,&rtime,&iotime);
-			sum_wtime[1] += wtime;
-			sum_rtime[1] += rtime;
-			sum_iotime[1] += iotime;
-	   
-	}
-
-// Calculation + IO – These processes will perform printing to screen within a medium sized loop
-	sum_wtime[2] = 0;
-	sum_rtime[2] = 0;
-	sum_iotime[2] = 0;
-	for(i=0; i< NUM_OF_CHILDS; i++){
-		int pid;
-		pid = fork();
-		if(pid == 0){
-			for(j=0;j<MEDIUM_SIZE_LOOP;++j){
-					print();
-				}
-		exit();	
-		}
-		else 
-			pids[i] = pid;
-	
-	}
-
-	for(i=0; i< NUM_OF_CHILDS; i++){
-			wait2(pids[i],&wtime,&rtime,&iotime);
-			sum_wtime[2] += wtime;
-			sum_rtime[2] += rtime;
-			sum_iotime[2] += iotime;
-	   
-	}
-
-// Calculation + IO – These processes will perform printing to screen within a very large loop
-	sum_wtime[3] = 0;
-	sum_rtime[3] = 0;
-	sum_iotime[3] = 0;
-	for(i=0; i< NUM_OF_CHILDS; i++){
-		int pid;
-		pid = fork();
-		if(pid == 0){
-			for(j=0;j<LARGE_SIZE_LOOP;++j){
-					print();
-				}
-		exit();	
-		}
-		else 
-			pids[i] = pid;
-	
-	}
-
-	for(i=0; i< NUM_OF_CHILDS; i++){
-			wait2(pids[i],&wtime,&rtime,&iotime);
-			sum_wtime[3] += wtime;
-			sum_rtime[3] += rtime;
-			sum_iotime[3] += iotime;
+			sum_wtime[i%4] += wtime;
+			sum_rtime[i%4] += rtime;
+			sum_iotime[i%4] += iotime;
 	   
 	}
 	
