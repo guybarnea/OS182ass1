@@ -6,9 +6,11 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+
 #define MAX_VARIABLES 32
 
 
+double decay[4] = {0, 0.75, 1, 1.25};
 char variables[MAX_VARIABLES][32] = {0};
 char values[MAX_VARIABLES][128] = {0};
 
@@ -96,6 +98,8 @@ found:
   p->ctime = ticks; 	
   p->iotime = 0; 			
 	p->rtime = 0;
+  p->A = QUANTUM;
+  p->decay = decay[2];
 
   release(&ptable.lock);
 
@@ -157,6 +161,8 @@ userinit(void)
   acquire(&ptable.lock);
 
   p->state = RUNNABLE;
+  p->readyAt = ticks;
+  p->lap = 0;
 
   release(&ptable.lock);
 }
@@ -207,6 +213,7 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+  np->decay = curproc->decay;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -223,6 +230,8 @@ fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
+  np->readyAt = ticks;
+  np->lap = 0;
 
   release(&ptable.lock);
 
@@ -383,6 +392,10 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+
+    /* SCHEDFLAG = DEFAULT */
+
+    #ifdef DEFAULT
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
@@ -401,6 +414,117 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       c->proc = 0;
     }
+    #else
+
+    /* SCHEDFLAG = FCFS */
+
+    #ifdef FCFS
+      struct proc *minimum = 0;
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+       if(p->state != RUNNABLE)
+          continue;
+        if(minimum==0)
+          minimum = p;
+        else
+          if(minimum->readyAt > p->readyAt)
+            minimum = p;
+        }
+
+      if(minimum!=0){
+        p = minimum;
+
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+    #else
+
+    /* SCHEDFLAG = SRT */
+
+    #ifdef SRT
+      struct proc *minimum = 0;
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state != RUNNABLE)
+          continue;
+        if(minimum==0)
+          minimum = p;
+        else
+          if(minimum->A > p->A)
+            minimum = p;
+        }
+      
+      if(minimum!=0){
+        p = minimum;
+
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+    #else
+
+    /* SCHEDFLAG = CFSD */
+
+    #ifdef CFSD
+      double minRatio;
+      struct proc *minimum = 0;
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state != RUNNABLE)
+          continue;
+        double currRatio = (p->rtime * p->decay) / (ticks - p->ctime - p->iotime);
+        if(minimum==0){
+          minRatio = currRatio;
+          minimum = p;
+        }
+        else
+          if(currRatio < minRatio){
+            minRatio = currRatio;
+            minimum = p;
+          }
+        }
+      
+      if(minimum!=0){
+        p = minimum;
+
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+
+    #endif
+    #endif
+    #endif
+    #endif
+
     release(&ptable.lock);
 
   }
@@ -437,7 +561,12 @@ void
 yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
-  myproc()->state = RUNNABLE;
+  struct proc *p = myproc();
+  p->state = RUNNABLE;
+  p->readyAt = ticks;
+  p->lap = 0;
+  if (p->rtime >= QUANTUM)
+    p->A = (1+ALPHA) * p->A;
   sched();
   release(&ptable.lock);
 }
@@ -489,6 +618,8 @@ sleep(void *chan, struct spinlock *lk)
   // Go to sleep.
   p->chan = chan;
   p->state = SLEEPING;
+  if (p->rtime >= QUANTUM)
+    p->A = (1+ALPHA) * p->A;
 
   sched();
 
@@ -511,8 +642,11 @@ wakeup1(void *chan)
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+    if(p->state == SLEEPING && p->chan == chan){
       p->state = RUNNABLE;
+      p->readyAt = ticks;
+      p->lap = 0;
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -537,8 +671,11 @@ kill(int pid)
     if(p->pid == pid){
       p->killed = 1;
       // Wake process from sleep if necessary.
-      if(p->state == SLEEPING)
+      if(p->state == SLEEPING){
         p->state = RUNNABLE;
+        p->readyAt = ticks;
+        p->lap = 0;
+      }
       release(&ptable.lock);
       return 0;
     }
@@ -592,6 +729,7 @@ void ticked(void){
     switch(p->state){
       case RUNNING:
         p->rtime++;
+        p->lap++;
         break;
       case SLEEPING:
         p->iotime++;
@@ -668,3 +806,14 @@ int remVariable(char* variable){
 }
 
 
+int set_priority(int priority){
+  struct proc *p = myproc();
+  if(priority<1 || priority>3)
+    return -1;
+  else{
+    acquire(&ptable.lock);
+    p->decay = decay[priority];
+    release(&ptable.lock);
+  }
+  return 0;
+}

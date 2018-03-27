@@ -53,6 +53,10 @@ struct proc {
   int etime;				   // End time
   int iotime;				   // I/O time
   int rtime;				   // Running time
+  int lap;             // The time of the current run
+  float A;             // Approximated running time
+  double decay;        // Decay factor, according to priority
+  int readyAt;         // The last time when the process became RUNNABLE
 };
 
 // Process memory is laid out contiguously, low addresses first:
