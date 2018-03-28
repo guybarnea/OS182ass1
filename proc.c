@@ -280,6 +280,7 @@ exit(void)
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
+  curproc->etime = ticks;
   sched();
   panic("zombie exit");
 }
@@ -343,9 +344,9 @@ int wait2(int pid, int* wtime, int* rtime, int* iotime){
       havekids = 1;
       if(p->state == ZOMBIE){
         // Found one.
+        *wtime = p->etime - p->ctime - p->iotime - p->rtime;
         *rtime = p->rtime;
         *iotime = p->iotime;
-        *wtime = p->etime - p->ctime - p->iotime - p->rtime;
         //pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;

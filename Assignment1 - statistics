@@ -1,0 +1,39 @@
+DEFAULT:
+
+Calculation Medium -  Wait time: 16,  Run time: 3, IO Time: 0
+
+Calculation Large -  Wait time: 980,  Run time: 709, IO Time: 0
+
+Calculation + IO Medium -  Wait time: 657,  Run time: 160, IO Time: 45
+
+Calculation + IO Large -  Wait time: 881,  Run time: 2711, IO Time: 203
+
+FCFS:
+
+Calculation Medium -  Wait time: 662,  Run time: 3, IO Time: 0
+
+Calculation Large -  Wait time: 970,  Run time: 659, IO Time: 0
+
+Calculation + IO Medium -  Wait time: 925,  Run time: 117, IO Time: 0
+
+Calculation + IO Large -  Wait time: 804,  Run time: 2040, IO Time: 49
+
+SRT:
+
+Calculation Medium -  Wait time: 11,  Run time: 4, IO Time: 0
+
+Calculation Large -  Wait time: 621,  Run time: 639, IO Time: 0
+
+Calculation + IO Medium -  Wait time: 667,  Run time: 141, IO Time: 41
+
+Calculation + IO Large -  Wait time: 828,  Run time: 2647, IO Time: 174
+
+CFSD:
+
+Calculation Medium -  Wait time: 19,  Run time: 3, IO Time: 2
+
+Calculation Large -  Wait time: 1182,  Run time: 699, IO Time: 0
+
+Calculation + IO Medium -  Wait time: 693,  Run time: 163, IO Time: 55
+
+Calculation + IO Large -  Wait time: 866,  Run time: 2526, IO Time: 171

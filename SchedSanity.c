@@ -1,8 +1,10 @@
 #include "types.h"
 #include "user.h"
-#define NUM_OF_CHILDS 40
-#define MEDIUM_SIZE_LOOP 400
-#define LARGE_SIZE_LOOP 250000
+#define NUM_OF_CHILDS 11
+#define CLAC_MEDIUM_SIZE_LOOP 1000000
+#define CALC_LARGE_SIZE_LOOP 200000000
+#define IO_MEDIUM_SIZE_LOOP 1000
+#define IO_LARGE_SIZE_LOOP 20000
 
 int 
 gcd ( int a, int b )
@@ -17,7 +19,7 @@ gcd ( int a, int b )
 
 
 void small_loop_calculation(){
-	for(int j=0;j<MEDIUM_SIZE_LOOP;++j)
+	for(int j=0;j<CLAC_MEDIUM_SIZE_LOOP;++j)
 		gcd(j+1,j+2);
 	
 }
@@ -25,20 +27,20 @@ void small_loop_calculation(){
 
 
 void large_loop_calculation(){
-	for(int j=0;j<LARGE_SIZE_LOOP;++j)
+	for(int j=0;j<CALC_LARGE_SIZE_LOOP;++j)
 		gcd(j+1,j+2);
 	
 }
 
 
 void small_loop_print(){
-	for(int j=0;j<MEDIUM_SIZE_LOOP;++j){
+	for(int j=0;j<IO_MEDIUM_SIZE_LOOP;++j){
 		printf(1, "hello world!\n");
 	}
 }
 
 void large_loop_print(){
-	for(int j=0;j<MEDIUM_SIZE_LOOP;++j){
+	for(int j=0;j<IO_LARGE_SIZE_LOOP;++j){
 		printf(1, "hello world!\n");
 	}
 }
@@ -62,7 +64,7 @@ int main(int argc, char *argv[])
 		int pid;
 	    pid = fork();
 		if(pid == 0){
-			if(cfsd) set_priority(i);
+			if(cfsd) set_priority(i%3 + 1);
 			if(i%4 == 0)
 				small_loop_calculation(); //Calculation only - These processes will perform asimple calculation within a medium sized loop
 			if(i%4 == 1)
